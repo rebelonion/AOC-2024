@@ -1,0 +1,187 @@
+cmake_minimum_required(VERSION 3.29)
+project(AOC_2024
+        VERSION 1.0
+        DESCRIPTION "Advent of Code 2024 Solutions"
+        LANGUAGES CXX
+)
+
+include(FetchContent)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_DEBUG_POSTFIX "d")
+
+set(CMAKE_DISABLE_SOURCE_CHANGES ON)
+set(CMAKE_DISABLE_IN_SOURCE_BUILDS ON)
+
+include(CheckCXXCompilerFlag)
+
+# Options
+# --------------------------------------------------------------------------------
+option(AOC_ENABLE_TESTING "Enable test suite" ON)
+option(AOC_ENABLE_SANITIZERS "Enable sanitizers in debug builds" OFF)
+option(AOC_ENABLE_ASAN "Enable Address Sanitizer" ON)
+option(AOC_ENABLE_UBSAN "Enable Undefined Behavior Sanitizer" ON)
+option(AOC_ENABLE_TSAN "Enable Thread Sanitizer" OFF)
+# --------------------------------------------------------------------------------
+
+function(add_cxx_compiler_flag FLAG)
+    check_cxx_compiler_flag("${FLAG}" FLAG_SUPPORTED)
+    if (FLAG_SUPPORTED)
+        add_compile_options("${FLAG}")
+    endif ()
+endfunction()
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-O3)
+    add_compile_options(-flto)
+    add_link_options(-flto)
+endif ()
+
+if (MSVC)
+    add_compile_options(/W4 /permissive-)
+else ()
+    add_cxx_compiler_flag(-march=native)
+    add_cxx_compiler_flag(-mtune=native)
+
+    add_cxx_compiler_flag(-Wall)
+    add_cxx_compiler_flag(-Wextra)
+    add_cxx_compiler_flag(-Wpedantic)
+    add_cxx_compiler_flag(-Wconversion)
+    add_cxx_compiler_flag(-Wshadow)
+    add_cxx_compiler_flag(-Wcast-align)
+    add_cxx_compiler_flag(-Wcast-qual)
+    add_cxx_compiler_flag(-Wformat=2)
+    add_cxx_compiler_flag(-Wunused)
+    add_cxx_compiler_flag(-Wnon-virtual-dtor)
+    add_cxx_compiler_flag(-Woverloaded-virtual)
+endif ()
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT IPO_SUPPORTED)
+if (IPO_SUPPORTED)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif ()
+
+if(AOC_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        if(AOC_ENABLE_ASAN)
+            add_compile_options(-fsanitize=address)
+            add_link_options(-fsanitize=address)
+        endif()
+        if(AOC_ENABLE_UBSAN)
+            add_compile_options(-fsanitize=undefined)
+            add_link_options(-fsanitize=undefined)
+        endif()
+        if(AOC_ENABLE_TSAN)
+            add_compile_options(-fsanitize=thread)
+            add_link_options(-fsanitize=thread)
+        endif()
+    endif()
+endif()
+
+find_package(TBB QUIET)
+if(NOT TBB_FOUND)
+    message(STATUS "TBB not found - will download and build from source")
+
+    FetchContent_Declare(
+            tbb
+            GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
+            GIT_TAG v2022.0.0
+    )
+
+    set(TBB_TEST OFF)
+    set(TBB_EXAMPLES OFF)
+
+    FetchContent_MakeAvailable(tbb)
+endif()
+
+find_package(Boost 1.86 COMPONENTS container QUIET)
+if (NOT Boost_FOUND)
+    message(STATUS "Boost not found - will download and build from source")
+
+    FetchContent_Declare(
+            boost
+            URL https://github.com/boostorg/boost/releases/download/boost-1.86.0/boost_1_86_0.tar.gz
+            URL_HASH 0c4419a3be3e663619de616c23f5cd55c4629314d1d0eeba43e846cc26e0439f
+    )
+    set(BOOST_INCLUDE_LIBRARIES container)
+    set(BOOST_ENABLE_CMAKE ON)
+    FetchContent_MakeAvailable(boost)
+endif ()
+
+if (AOC_ENABLE_TESTING)
+    enable_testing()
+
+    FetchContent_Declare(
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.15.2
+    )
+    FetchContent_MakeAvailable(googletest)
+
+    # Test executable
+    add_executable(${PROJECT_NAME}_test
+            test/Day01Test.cpp
+            test/Day02Test.cpp
+            test/Day03Test.cpp)
+    target_compile_definitions(${PROJECT_NAME}_test
+            PRIVATE
+            TESTING
+    )
+    target_link_libraries(${PROJECT_NAME}_test
+            PRIVATE
+            aoc_lib
+            GTest::gtest_main
+    )
+
+    include(GoogleTest)
+    gtest_discover_tests(${PROJECT_NAME}_test)
+endif ()
+
+# Library
+add_library(aoc_lib INTERFACE
+        src/Day01.h
+        src/Day02.h
+        src/aoc/AocTemplates.h
+        src/aoc/AocExceptions.h
+        src/Day03.h
+        src/aoc/Profiler.h
+)
+target_include_directories(aoc_lib
+        INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/aoc
+)
+target_link_libraries(aoc_lib
+        INTERFACE
+        TBB::tbb
+        Boost::container
+)
+
+# Main executable
+add_executable(${PROJECT_NAME} src/main.cpp)
+target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+        aoc_lib
+)
+
+target_precompile_headers(aoc_lib INTERFACE
+        <vector>
+        <span>
+        <ranges>
+        <expected>
+        <filesystem>
+        <execution>
+        <algorithm>
+        <numeric>
+        <boost/container/small_vector.hpp>
+)
+
+if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(${PROJECT_NAME}
+            PRIVATE
+            "-lstdc++exp"
+    )
+endif ()
