@@ -13,13 +13,13 @@ protected:
 
     static void TestSimpleMultiplication() {
         const std::string input = "mul(2,3)";
-        const auto result = Day03::sumMultiplications<int64_t>(input);
+        const auto result = Day03::processMultiplications<int64_t>(input);
         EXPECT_EQ(result, 6);
     }
 
     static void TestMultipleMultiplications() {
         const std::string input = "mul(2,3) text mul(4,5)";
-        const auto result = Day03::sumMultiplications<int64_t>(input);
+        const auto result = Day03::processMultiplications<int64_t>(input);
         EXPECT_EQ(result, 26); // 2*3 + 4*5 = 6 + 20 = 26
     }
 
@@ -29,7 +29,7 @@ protected:
 
     static void TestEmptyInput() {
         const std::string input;
-        const auto result = Day03::sumMultiplications<int64_t>(input);
+        const auto result = Day03::processMultiplications<int64_t>(input);
         EXPECT_EQ(result, 0);
     }
 
@@ -60,7 +60,7 @@ protected:
         buffer << file.value().rdbuf();
         const std::string content = buffer.str();
 
-        const auto result = Day03::sumMultiplications<int64_t>(content);
+        const auto result = Day03::processMultiplications<int64_t>(content);
         EXPECT_EQ(result, 26);
     }
 
@@ -71,7 +71,7 @@ protected:
 
     static void TestLargeNumbers() {
         const std::string input = "mul(999,999)";
-        const auto result = Day03::sumMultiplications<int64_t>(input);
+        const auto result = Day03::processMultiplications<int64_t>(input);
         EXPECT_EQ(result, 998001);
     }
 
