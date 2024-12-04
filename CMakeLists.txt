@@ -41,22 +41,27 @@ endif ()
 
 if (MSVC)
     add_compile_options(/W4 /permissive-)
-else ()
-    add_cxx_compiler_flag(-march=native)
-    add_cxx_compiler_flag(-mtune=native)
-
-    add_cxx_compiler_flag(-Wall)
-    add_cxx_compiler_flag(-Wextra)
-    add_cxx_compiler_flag(-Wpedantic)
-    add_cxx_compiler_flag(-Wconversion)
-    add_cxx_compiler_flag(-Wshadow)
-    add_cxx_compiler_flag(-Wcast-align)
-    add_cxx_compiler_flag(-Wcast-qual)
-    add_cxx_compiler_flag(-Wformat=2)
-    add_cxx_compiler_flag(-Wunused)
-    add_cxx_compiler_flag(-Wnon-virtual-dtor)
-    add_cxx_compiler_flag(-Woverloaded-virtual)
 endif ()
+
+function(add_strict_compile_options target visibility)
+    if (NOT MSVC)
+        target_compile_options(${target} ${visibility}
+                -march=native
+                -mtune=native
+                -Wall
+                -Wextra
+                -Wpedantic
+                -Wconversion
+                -Wshadow
+                -Wcast-align
+                -Wcast-qual
+                -Wformat=2
+                -Wunused
+                -Wnon-virtual-dtor
+                -Woverloaded-virtual
+        )
+    endif ()
+endfunction()
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT IPO_SUPPORTED)
@@ -64,25 +69,28 @@ if (IPO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif ()
 
-if(AOC_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        if(AOC_ENABLE_ASAN)
+if (AOC_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        if (AOC_ENABLE_ASAN)
             add_compile_options(-fsanitize=address)
             add_link_options(-fsanitize=address)
-        endif()
-        if(AOC_ENABLE_UBSAN)
+        endif ()
+        if (AOC_ENABLE_UBSAN)
             add_compile_options(-fsanitize=undefined)
             add_link_options(-fsanitize=undefined)
-        endif()
-        if(AOC_ENABLE_TSAN)
+        endif ()
+        if (AOC_ENABLE_TSAN)
             add_compile_options(-fsanitize=thread)
             add_link_options(-fsanitize=thread)
-        endif()
-    endif()
-endif()
+        endif ()
+    endif ()
+endif ()
 
 find_package(TBB QUIET)
-if(NOT TBB_FOUND)
+if (NOT TBB_FOUND)
+    if (WIN32)
+        message(FATAL_ERROR "TBB not found - please install Intel oneAPI Threading Building Blocks")
+    endif ()
     message(STATUS "TBB not found - will download and build from source")
 
     FetchContent_Declare(
@@ -95,7 +103,7 @@ if(NOT TBB_FOUND)
     set(TBB_EXAMPLES OFF)
 
     FetchContent_MakeAvailable(tbb)
-endif()
+endif ()
 
 find_package(Boost 1.86 COMPONENTS container QUIET)
 if (NOT Boost_FOUND)
@@ -103,8 +111,7 @@ if (NOT Boost_FOUND)
 
     FetchContent_Declare(
             boost
-            URL https://github.com/boostorg/boost/releases/download/boost-1.86.0/boost_1_86_0.tar.gz
-            URL_HASH 0c4419a3be3e663619de616c23f5cd55c4629314d1d0eeba43e846cc26e0439f
+            URL https://github.com/boostorg/boost/releases/download/boost-1.86.0/boost-1.86.0-cmake.tar.gz
     )
     set(BOOST_INCLUDE_LIBRARIES container)
     set(BOOST_ENABLE_CMAKE ON)
@@ -126,6 +133,7 @@ if (AOC_ENABLE_TESTING)
             test/Day01Test.cpp
             test/Day02Test.cpp
             test/Day03Test.cpp)
+    add_strict_compile_options(${PROJECT_NAME}_test PRIVATE)
     target_compile_definitions(${PROJECT_NAME}_test
             PRIVATE
             TESTING
@@ -149,6 +157,7 @@ add_library(aoc_lib INTERFACE
         src/Day03.h
         src/aoc/Profiler.h
 )
+add_strict_compile_options(aoc_lib INTERFACE)
 target_include_directories(aoc_lib
         INTERFACE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -162,6 +171,8 @@ target_link_libraries(aoc_lib
 
 # Main executable
 add_executable(${PROJECT_NAME} src/main.cpp)
+add_strict_compile_options(${PROJECT_NAME} PRIVATE)
+
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
         aoc_lib
