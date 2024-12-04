@@ -36,7 +36,7 @@ private:
     static T stoT(std::string_view str) noexcept(false);
 
     template <aoc::templates::Numeric T>
-    static auto processMultiplications(std::string_view text);
+    static T processMultiplications(std::string_view text);
 
     template <aoc::templates::Numeric T>
     static T sumMultiplicationsDD(const std::string& input) noexcept;
@@ -89,7 +89,7 @@ T Day03::stoT(const std::string_view str) noexcept(false) {
 }
 
 template <aoc::templates::Numeric T>
-auto Day03::processMultiplications(const std::string_view text) {
+T Day03::processMultiplications(const std::string_view text) {
     const std::string str{text};
     const auto end = regexIterator();
 
