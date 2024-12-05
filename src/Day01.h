@@ -8,8 +8,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <bits/ranges_algo.h>
-
 #include "AocExceptions.h"
 #include "AocTemplates.h"
 

@@ -1,7 +1,7 @@
 #include "Day01.h"
 #include "Day02.h"
 #include "Day03.h"
-
+#include "Day04.h"
 
 int main() {
     std::println("Day 1:");
@@ -14,5 +14,8 @@ int main() {
     std::println("Day 3:");
     Day03::partOne();
     Day03::partTwo();
+    std::println("Day 4:");
+    Day04::partOne();
+    Day04::partTwo();
     return 0;
 }

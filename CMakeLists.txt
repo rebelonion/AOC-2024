@@ -26,6 +26,7 @@ option(AOC_ENABLE_UBSAN "Enable Undefined Behavior Sanitizer" ON)
 option(AOC_ENABLE_TSAN "Enable Thread Sanitizer" OFF)
 # --------------------------------------------------------------------------------
 
+# Compiler flags and options setup
 function(add_cxx_compiler_flag FLAG)
     check_cxx_compiler_flag("${FLAG}" FLAG_SUPPORTED)
     if (FLAG_SUPPORTED)
@@ -39,6 +40,12 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
     add_link_options(-flto)
 endif ()
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++")
+    string(REPLACE "-fpch-instantiate-templates" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    link_libraries(c++parallel)
+endif()
+
 if (MSVC)
     add_compile_options(/W4 /permissive-)
 endif ()
@@ -46,6 +53,8 @@ endif ()
 function(add_strict_compile_options target visibility)
     if (NOT MSVC)
         target_compile_options(${target} ${visibility}
+                -ffast-math
+                -mavx2
                 -march=native
                 -mtune=native
                 -Wall
@@ -63,12 +72,14 @@ function(add_strict_compile_options target visibility)
     endif ()
 endfunction()
 
+# IPO/LTO support
 include(CheckIPOSupported)
 check_ipo_supported(RESULT IPO_SUPPORTED)
 if (IPO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif ()
 
+# Sanitizer setup
 if (AOC_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         if (AOC_ENABLE_ASAN)
@@ -86,6 +97,10 @@ if (AOC_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif ()
 endif ()
 
+# Dependencies
+# --------------------------------------------------------------------------------
+
+# TBB
 find_package(TBB QUIET)
 if (NOT TBB_FOUND)
     if (WIN32)
@@ -105,6 +120,7 @@ if (NOT TBB_FOUND)
     FetchContent_MakeAvailable(tbb)
 endif ()
 
+# Boost
 find_package(Boost 1.86 COMPONENTS container QUIET)
 if (NOT Boost_FOUND)
     message(STATUS "Boost not found - will download and build from source")
@@ -118,8 +134,13 @@ if (NOT Boost_FOUND)
     FetchContent_MakeAvailable(boost)
 endif ()
 
+# GoogleTest (configure before Highway)
 if (AOC_ENABLE_TESTING)
     enable_testing()
+
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 
     FetchContent_Declare(
             googletest
@@ -127,12 +148,37 @@ if (AOC_ENABLE_TESTING)
             GIT_TAG v1.15.2
     )
     FetchContent_MakeAvailable(googletest)
+endif ()
 
-    # Test executable
+# Library target
+add_library(aoc_lib INTERFACE
+        src/Day01.h
+        src/Day02.h
+        src/aoc/AocTemplates.h
+        src/aoc/AocExceptions.h
+        src/Day03.h
+        src/aoc/Profiler.h
+        src/Day04.h
+)
+add_strict_compile_options(aoc_lib INTERFACE)
+target_include_directories(aoc_lib
+        INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/aoc
+)
+target_link_libraries(aoc_lib
+        INTERFACE
+        TBB::tbb
+        Boost::container
+)
+
+# Test executable
+if (AOC_ENABLE_TESTING)
     add_executable(${PROJECT_NAME}_test
             test/Day01Test.cpp
             test/Day02Test.cpp
-            test/Day03Test.cpp)
+            test/Day03Test.cpp
+            test/Day04Test.cpp)
     add_strict_compile_options(${PROJECT_NAME}_test PRIVATE)
     target_compile_definitions(${PROJECT_NAME}_test
             PRIVATE
@@ -147,27 +193,6 @@ if (AOC_ENABLE_TESTING)
     include(GoogleTest)
     gtest_discover_tests(${PROJECT_NAME}_test)
 endif ()
-
-# Library
-add_library(aoc_lib INTERFACE
-        src/Day01.h
-        src/Day02.h
-        src/aoc/AocTemplates.h
-        src/aoc/AocExceptions.h
-        src/Day03.h
-        src/aoc/Profiler.h
-)
-add_strict_compile_options(aoc_lib INTERFACE)
-target_include_directories(aoc_lib
-        INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/aoc
-)
-target_link_libraries(aoc_lib
-        INTERFACE
-        TBB::tbb
-        Boost::container
-)
 
 # Main executable
 add_executable(${PROJECT_NAME} src/main.cpp)
