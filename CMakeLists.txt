@@ -159,6 +159,8 @@ add_library(aoc_lib INTERFACE
         src/Day03.h
         src/aoc/Profiler.h
         src/Day04.h
+        src/Day05.h
+        src/Day06.h
 )
 add_strict_compile_options(aoc_lib INTERFACE)
 target_include_directories(aoc_lib
