@@ -21,6 +21,10 @@ public:
 
     static void partTwo();
 
+#ifdef TESTING
+    friend class Day05Test;
+#endif
+
 private:
     // Core processing logic shared between both parts
     static std::expected<size_t, aoc::exceptions::AocException> processPuzzle(bool fixBrokenRules);
@@ -141,8 +145,12 @@ inline auto Day05::breaksRule(const std::unordered_set<int> &rules,
 
 constexpr auto Day05::fixList(std::vector<int> &update, const int targetIndex, const int value) -> bool {
     if (const auto it = std::ranges::find(update, value); it != update.end()) {
-        update.erase(it);
-        update.insert(update.begin() + targetIndex, value);
+        const auto distance = std::distance(update.begin(), it);
+        std::rotate(
+            update.begin() + targetIndex,
+            update.begin() + distance,
+            update.begin() + distance + 1
+        );
         return true;
     }
     return false;

@@ -180,7 +180,8 @@ if (AOC_ENABLE_TESTING)
             test/Day01Test.cpp
             test/Day02Test.cpp
             test/Day03Test.cpp
-            test/Day04Test.cpp)
+            test/Day04Test.cpp
+            test/Day05Test.cpp)
     add_strict_compile_options(${PROJECT_NAME}_test PRIVATE)
     target_compile_definitions(${PROJECT_NAME}_test
             PRIVATE
